@@ -12,25 +12,28 @@ pipeline {
     }
 
     stages {
-        stage('Derive SERVICE_REPO from Job Name') {
+        stage('Derive Config from Job Name') {
             steps {
                 script {
-                    def jobName = env.JOB_NAME.split('/').last() // Support foldered jobs
+                    def jobName = env.JOB_NAME.split('/').last()
                     def serviceName = jobName.replaceFirst(/^CI-/, '')
+
                     env.SERVICE_NAME = serviceName
                     env.SERVICE_REPO = "git@github.com:rmaheto/${serviceName}.git"
+                    env.GIT_CREDENTIALS = "github-ssh-key" // or param if needed
 
                     echo "Derived SERVICE_REPO: ${env.SERVICE_REPO}"
+                    echo "Using Git credentials ID: ${env.GIT_CREDENTIALS}"
                 }
             }
         }
 
-        stage('Initial Checkout') {
+        stage('Checkout with Credentials') {
             steps {
                 dir(env.APP_DIR) {
                     git branch: params.BRANCH_NAME,
-                     credentialsId: env.GIT_CREDENTIALS,
-                        url: env.SERVICE_REPO
+                        url: env.SERVICE_REPO,
+                        credentialsId: env.GIT_CREDENTIALS
                 }
             }
         }
@@ -39,20 +42,10 @@ pipeline {
             steps {
                 script {
                     def inputProps = readJSON file: "${env.APP_DIR}/ci/input.json"
-                    env.GIT_CREDENTIALS = inputProps.GIT_CREDENTIALS
-                    env.SOLUTION_ID = inputProps.SOLUTION_ID
-                    env.APPLICATION = inputProps.APPLICATION
-                }
-            }
-        }
 
-        stage('Re-Checkout with Credentials') {
-            steps {
-                dir(env.APP_DIR) {
-                    deleteDir()
-                    git branch: params.BRANCH_NAME,
-                        url: env.SERVICE_REPO,
-                        credentialsId: env.GIT_CREDENTIALS
+                    // Optional: allow overrides
+                    env.SOLUTION_ID = inputProps.SOLUTION_ID ?: 'unknown'
+                    env.APPLICATION = inputProps.APPLICATION ?: env.SERVICE_NAME
                 }
             }
         }
@@ -61,7 +54,6 @@ pipeline {
             steps {
                 script {
                     def inputProps = readJSON file: "${env.APP_DIR}/ci/input.json"
-
                     def pipelineScript = load "${env.APP_DIR}/ci/build-pipeline.groovy"
 
                     pipelineScript.runPipeline([
