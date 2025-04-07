@@ -2,24 +2,44 @@ pipeline {
     agent any
 
     parameters {
+        string(name: 'SERVICE_REPO', defaultValue: '', description: 'Service Git repo (set by job config, not shown to user)', trim: true)
         string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to build')
-        string(name: 'BUILD_AGENT', defaultValue: 'Linux-RHEL7-Shared-BuildAgent', description: 'Agent label')
-        choice(name: 'BUILD_TYPE', choices: ['build', 'build_publish', 'build_publish_deploy'], description: 'What to run')
+        string(name: 'BUILD_AGENT', defaultValue: 'Linux-RHEL7-Shared-BuildAgent', description: 'Jenkins node label')
+        choice(name: 'BUILD_TYPE', choices: ['build', 'build_publish', 'build_publish_deploy'], description: 'Build type')
     }
 
     environment {
-        SERVICE_REPO     = "${SERVICE_REPO ?: 'ssh://git@github.com/your-org/placeholder.git'}"
-        SERVICE_NAME     = "${SERVICE_NAME ?: 'unknown-service'}"
-        GIT_CREDENTIALS  = "${GIT_CREDENTIALS ?: 'default-ssh'}"
+        APP_DIR = 'app'
     }
 
     stages {
-        stage("Checkout ${env.SERVICE_NAME}") {
+        stage('Initial Checkout') {
             steps {
-                dir("app") {
+                dir(env.APP_DIR) {
                     git branch: params.BRANCH_NAME,
-                        credentialsId: env.GIT_CREDENTIALS,
-                        url: env.SERVICE_REPO
+                        url: params.SERVICE_REPO
+                }
+            }
+        }
+
+        stage('Read input.json') {
+            steps {
+                script {
+                    def inputProps = readJSON file: "${env.APP_DIR}/ci/input.json"
+                    env.GIT_CREDENTIALS = inputProps.GIT_CREDENTIALS
+                    env.SOLUTION_ID = inputProps.SOLUTION_ID
+                    env.APPLICATION = inputProps.APPLICATION
+                }
+            }
+        }
+
+        stage('Re-Checkout with Credentials') {
+            steps {
+                dir(env.APP_DIR) {
+                    deleteDir()
+                    git branch: params.BRANCH_NAME,
+                        url: params.SERVICE_REPO,
+                        credentialsId: env.GIT_CREDENTIALS
                 }
             }
         }
@@ -27,16 +47,16 @@ pipeline {
         stage('Run Service Pipeline') {
             steps {
                 script {
-                    def inputProps = readJSON file: "app/ci/input.json"
+                    def inputProps = readJSON file: "${env.APP_DIR}/ci/input.json"
 
-                    def pipelineScript = load "app/ci/build-pipeline.groovy"
+                    def pipelineScript = load "${env.APP_DIR}/ci/build-pipeline.groovy"
 
                     pipelineScript.runPipeline([
                         branch: params.BRANCH_NAME,
                         gitCredentialsId: env.GIT_CREDENTIALS,
                         agent: params.BUILD_AGENT,
                         buildType: params.BUILD_TYPE,
-                        repo: env.SERVICE_REPO,
+                        repo: params.SERVICE_REPO,
                         props: inputProps
                     ])
                 }
