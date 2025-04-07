@@ -69,7 +69,8 @@ pipeline {
                         agent: params.BUILD_AGENT,
                         buildType: params.BUILD_TYPE,
                         repo: env.SERVICE_REPO,
-                        props: inputProps
+                        props: inputProps,
+                        serviceName: env.SERVICE_NAME
                     ])
                 }
             }
