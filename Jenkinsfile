@@ -29,6 +29,7 @@ pipeline {
             steps {
                 dir(env.APP_DIR) {
                     git branch: params.BRANCH_NAME,
+                     credentialsId: env.GIT_CREDENTIALS,
                         url: env.SERVICE_REPO
                 }
             }
