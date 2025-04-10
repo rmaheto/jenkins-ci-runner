@@ -28,15 +28,24 @@ pipeline {
             }
         }
 
-        stage('Checkout with Credentials') {
-            steps {
-                dir(env.CHECKOUT_DIR) {
-                    git branch: params.BRANCH_NAME,
+stage('Checkout with Credentials') {
+    steps {
+        script {
+            sh "mkdir -p ${env.CHECKOUT_DIR}"  // ensure directory exists
+            dir(env.CHECKOUT_DIR) {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${params.BRANCH_NAME}"]],
+                    userRemoteConfigs: [[
                         url: env.SERVICE_REPO,
                         credentialsId: env.GIT_CREDENTIALS
-                }
+                    ]]
+                ])
             }
         }
+    }
+}
+
 
         stage('Read input.json') {
             steps {
