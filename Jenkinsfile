@@ -43,7 +43,7 @@ pipeline {
                             ]],
                             doGenerateSubmoduleConfigurations: false,
                             submoduleCfg: [],
-                            extensions: [[$class: 'CleanBeforeCheckout']] // 🔧 Ensure clean slate
+                            extensions: [[$class: 'CleanBeforeCheckout']]
                         ])
                     }
                 }
@@ -64,17 +64,20 @@ pipeline {
             steps {
                 script {
                     def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
-                    def pipelineScript = load "${env.CHECKOUT_DIR}/build-pipeline.groovy"
+
+                    // ✅ Compute full path to be used inside runPipeline()
+                    def fullCheckoutDir = "${pwd()}/${env.CHECKOUT_DIR}"
+                    def pipelineScript = load "${fullCheckoutDir}/build-pipeline.groovy"
 
                     pipelineScript.runPipeline([
-                        branch         : params.BRANCH_NAME,
+                        branch          : params.BRANCH_NAME,
                         gitCredentialsId: env.GIT_CREDENTIALS,
-                        agent          : params.BUILD_AGENT,
-                        buildType      : params.BUILD_TYPE,
-                        repo           : env.SERVICE_REPO,
-                        props          : inputProps,
-                        serviceName    : env.SERVICE_NAME,
-                        dir            : env.CHECKOUT_DIR
+                        agent           : params.BUILD_AGENT,
+                        buildType       : params.BUILD_TYPE,
+                        repo            : env.SERVICE_REPO,
+                        props           : inputProps,
+                        serviceName     : env.SERVICE_NAME,
+                        dir             : fullCheckoutDir // ✅ pass full path
                     ])
                 }
             }
