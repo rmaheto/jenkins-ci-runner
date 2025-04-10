@@ -28,33 +28,27 @@ pipeline {
             }
         }
 
-stage('Checkout with Credentials') {
-    steps {
-        script {
-            echo "📁 Ensuring checkout directory exists..."
-            sh "mkdir -p ${env.CHECKOUT_DIR}"
+        stage('Checkout with Credentials') {
+            steps {
+                script {
+                    echo "🔄 Cloning repo ${env.SERVICE_REPO} into ${env.CHECKOUT_DIR}..."
 
-            echo "🔄 Cloning repo ${env.SERVICE_REPO} into ${env.CHECKOUT_DIR}..."
-
-            dir(env.CHECKOUT_DIR) {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${params.BRANCH_NAME}"]],
-                    userRemoteConfigs: [[
-                        url: env.SERVICE_REPO,
-                        credentialsId: env.GIT_CREDENTIALS
-                    ]],
-                    doGenerateSubmoduleConfigurations: false,
-                    submoduleCfg: [],
-                    extensions: []
-                ])
+                    dir(env.CHECKOUT_DIR) {
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: "*/${params.BRANCH_NAME}"]],
+                            userRemoteConfigs: [[
+                                url: env.SERVICE_REPO,
+                                credentialsId: env.GIT_CREDENTIALS
+                            ]],
+                            doGenerateSubmoduleConfigurations: false,
+                            submoduleCfg: [],
+                            extensions: [[$class: 'CleanBeforeCheckout']] // 🔧 Ensure clean slate
+                        ])
+                    }
+                }
             }
         }
-    }
-}
-
-
-
 
         stage('Read input.json') {
             steps {
@@ -73,13 +67,14 @@ stage('Checkout with Credentials') {
                     def pipelineScript = load "${env.CHECKOUT_DIR}/build-pipeline.groovy"
 
                     pipelineScript.runPipeline([
-                        branch: params.BRANCH_NAME,
+                        branch         : params.BRANCH_NAME,
                         gitCredentialsId: env.GIT_CREDENTIALS,
-                        agent: params.BUILD_AGENT,
-                        buildType: params.BUILD_TYPE,
-                        repo: env.SERVICE_REPO,
-                        props: inputProps,
-                        serviceName: env.SERVICE_NAME
+                        agent          : params.BUILD_AGENT,
+                        buildType      : params.BUILD_TYPE,
+                        repo           : env.SERVICE_REPO,
+                        props          : inputProps,
+                        serviceName    : env.SERVICE_NAME,
+                        dir            : env.CHECKOUT_DIR
                     ])
                 }
             }
