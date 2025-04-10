@@ -41,7 +41,7 @@ pipeline {
         stage('Read input.json') {
             steps {
                 script {
-                    def inputProps = readJSON file: "${env.APP_DIR}/ci/input.json"
+                    def inputProps = readJSON file: "${env.APP_DIR}/input.json"
 
                     // Optional: allow overrides
                     env.SOLUTION_ID = inputProps.SOLUTION_ID ?: 'unknown'
@@ -53,8 +53,8 @@ pipeline {
         stage('Run Service Pipeline') {
             steps {
                 script {
-                    def inputProps = readJSON file: "${env.APP_DIR}/ci/input.json"
-                    def pipelineScript = load "${env.APP_DIR}/ci/build-pipeline.groovy"
+                    def inputProps = readJSON file: "${env.APP_DIR}/input.json"
+                    def pipelineScript = load "${env.APP_DIR}/build-pipeline.groovy"
 
                     pipelineScript.runPipeline([
                         branch: params.BRANCH_NAME,
