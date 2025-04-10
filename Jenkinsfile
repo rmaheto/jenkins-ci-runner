@@ -7,10 +7,6 @@ pipeline {
         choice(name: 'BUILD_TYPE', choices: ['build', 'build_publish', 'build_publish_deploy'], description: 'Build type')
     }
 
-    environment {
-        APP_DIR = 'app'
-    }
-
     stages {
         stage('Derive Config from Job Name') {
             steps {
@@ -20,7 +16,7 @@ pipeline {
 
                     env.SERVICE_NAME = serviceName
                     env.SERVICE_REPO = "git@github.com:rmaheto/${serviceName}.git"
-                    env.GIT_CREDENTIALS = "github-ssh-key" // or param if needed
+                    env.GIT_CREDENTIALS = "github-ssh-key"
 
                     echo "Derived SERVICE_REPO: ${env.SERVICE_REPO}"
                     echo "Using Git credentials ID: ${env.GIT_CREDENTIALS}"
@@ -30,20 +26,17 @@ pipeline {
 
         stage('Checkout with Credentials') {
             steps {
-                dir(env.APP_DIR) {
-                    git branch: params.BRANCH_NAME,
-                        url: env.SERVICE_REPO,
-                        credentialsId: env.GIT_CREDENTIALS
-                }
+                git branch: params.BRANCH_NAME,
+                    url: env.SERVICE_REPO,
+                    credentialsId: env.GIT_CREDENTIALS
             }
         }
 
         stage('Read input.json') {
             steps {
                 script {
-                    def inputProps = readJSON file: "${env.APP_DIR}/input.json"
+                    def inputProps = readJSON file: 'input.json'
 
-                    // Optional: allow overrides
                     env.SOLUTION_ID = inputProps.SOLUTION_ID ?: 'unknown'
                     env.APPLICATION = inputProps.APPLICATION ?: env.SERVICE_NAME
                 }
@@ -53,8 +46,8 @@ pipeline {
         stage('Run Service Pipeline') {
             steps {
                 script {
-                    def inputProps = readJSON file: "${env.APP_DIR}/input.json"
-                    def pipelineScript = load "${env.APP_DIR}/build-pipeline.groovy"
+                    def inputProps = readJSON file: 'input.json'
+                    def pipelineScript = load 'build-pipeline.groovy'
 
                     pipelineScript.runPipeline([
                         branch: params.BRANCH_NAME,
