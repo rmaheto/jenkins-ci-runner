@@ -7,6 +7,10 @@ pipeline {
         choice(name: 'BUILD_TYPE', choices: ['build', 'build_publish', 'build_publish_deploy'], description: 'Build type')
     }
 
+    environment {
+        CHECKOUT_DIR = 'authentication-service'
+    }
+
     stages {
         stage('Derive Config from Job Name') {
             steps {
@@ -26,17 +30,18 @@ pipeline {
 
         stage('Checkout with Credentials') {
             steps {
-                git branch: params.BRANCH_NAME,
-                    url: env.SERVICE_REPO,
-                    credentialsId: env.GIT_CREDENTIALS
+                dir(env.CHECKOUT_DIR) {
+                    git branch: params.BRANCH_NAME,
+                        url: env.SERVICE_REPO,
+                        credentialsId: env.GIT_CREDENTIALS
+                }
             }
         }
 
         stage('Read input.json') {
             steps {
                 script {
-                    def inputProps = readJSON file: 'input.json'
-
+                    def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
                     env.SOLUTION_ID = inputProps.SOLUTION_ID ?: 'unknown'
                     env.APPLICATION = inputProps.APPLICATION ?: env.SERVICE_NAME
                 }
@@ -46,8 +51,8 @@ pipeline {
         stage('Run Service Pipeline') {
             steps {
                 script {
-                    def inputProps = readJSON file: 'input.json'
-                    def pipelineScript = load 'build-pipeline.groovy'
+                    def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
+                    def pipelineScript = load "${env.CHECKOUT_DIR}/build-pipeline.groovy"
 
                     pipelineScript.runPipeline([
                         branch: params.BRANCH_NAME,
