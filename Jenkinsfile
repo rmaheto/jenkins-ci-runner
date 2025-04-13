@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to build')
+        string(name: 'BRANCH_NAME', defaultValue: 'master', description: 'Branch to build')
         string(name: 'BUILD_AGENT', defaultValue: 'Linux-RHEL7-Shared-BuildAgent', description: 'Jenkins node label')
         choice(name: 'BUILD_TYPE', choices: ['build', 'build_publish', 'build_publish_deploy'], description: 'Build type')
     }
