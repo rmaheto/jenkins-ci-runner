@@ -12,7 +12,7 @@ pipeline {
     }
 
     stages {
-		stage('Initialize and Launch Service Pipeline') {
+		stage('setup') {
 			steps {
 				script {
 					// --- Derive Config ---
