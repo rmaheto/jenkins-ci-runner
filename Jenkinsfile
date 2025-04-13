@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to build')
+        string(name: 'BRANCH_NAME', defaultValue: 'master', description: 'Branch to build')
         string(name: 'BUILD_AGENT', defaultValue: 'Linux-RHEL7-Shared-BuildAgent', description: 'Jenkins node label')
         choice(name: 'BUILD_TYPE', choices: ['build', 'build_publish', 'build_publish_deploy'], description: 'Build type')
     }
@@ -11,14 +11,11 @@ pipeline {
         CHECKOUT_DIR = 'authentication-service'
     }
 
-stages {
-		stage('Init') {
-			when { expression { false } }
-            steps {
+    stages {
+		stage('Derive Config from Job Name') {
+			steps {
 				script {
-					echo "🔧 Initializing pipeline setup..."
-
-                    def jobName = env.JOB_NAME.split('/').last()
+					def jobName = env.JOB_NAME.split('/').last()
                     def serviceName = jobName.replaceFirst(/^CI-/, '')
 
                     env.SERVICE_NAME = serviceName
@@ -27,9 +24,15 @@ stages {
 
                     echo "Derived SERVICE_REPO: ${env.SERVICE_REPO}"
                     echo "Using Git credentials ID: ${env.GIT_CREDENTIALS}"
+                }
+            }
+        }
 
-                    // Git checkout
-                    echo "🔄 Cloning repo ${env.SERVICE_REPO} into ${env.CHECKOUT_DIR}..."
+        stage('Checkout with Credentials') {
+			steps {
+				script {
+					echo "🔄 Cloning repo ${env.SERVICE_REPO} into ${env.CHECKOUT_DIR}..."
+
                     dir(env.CHECKOUT_DIR) {
 						checkout([
                             $class: 'GitSCM',
@@ -38,24 +41,28 @@ stages {
                                 url: env.SERVICE_REPO,
                                 credentialsId: env.GIT_CREDENTIALS
                             ]],
+                            doGenerateSubmoduleConfigurations: false,
+                            submoduleCfg: [],
                             extensions: [[$class: 'CleanBeforeCheckout']]
                         ])
                     }
+                }
+            }
+        }
 
-                    // Read config
-                    def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
+        stage('Load Config') {
+			steps {
+				script {
+					def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
                     env.SOLUTION_ID = inputProps.SOLUTION_ID ?: 'unknown'
                     env.APPLICATION = inputProps.APPLICATION ?: env.SERVICE_NAME
-                    env.PIPELINE_PROPS = inputProps.collectEntries { k, v -> [(k): v.toString()] }
-
-                    echo "✅ Loaded config for ${env.APPLICATION}"
+                    env.PIPELINE_PROPS = inputProps.collectEntries { k, v -> [(k): v.toString()] } // for reuse
                 }
             }
         }
 
         stage('Run Service Pipeline') {
-			when { expression { false } } // 👻 Hides from UI
-            steps {
+			steps {
 				script {
 					def fullCheckoutDir = "${pwd()}/${env.CHECKOUT_DIR}"
                     def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
