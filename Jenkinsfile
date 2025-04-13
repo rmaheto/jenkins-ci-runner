@@ -12,10 +12,13 @@ pipeline {
     }
 
     stages {
-		stage('Derive Config from Job Name') {
-			steps {
+		stage('Init') {
+			when { expression { false } }
+            steps {
 				script {
-					def jobName = env.JOB_NAME.split('/').last()
+					echo "🔧 Initializing pipeline setup..."
+
+                    def jobName = env.JOB_NAME.split('/').last()
                     def serviceName = jobName.replaceFirst(/^CI-/, '')
 
                     env.SERVICE_NAME = serviceName
@@ -24,15 +27,9 @@ pipeline {
 
                     echo "Derived SERVICE_REPO: ${env.SERVICE_REPO}"
                     echo "Using Git credentials ID: ${env.GIT_CREDENTIALS}"
-                }
-            }
-        }
 
-        stage('Checkout with Credentials') {
-			steps {
-				script {
-					echo "🔄 Cloning repo ${env.SERVICE_REPO} into ${env.CHECKOUT_DIR}..."
-
+                    // Git checkout
+                    echo "🔄 Cloning repo ${env.SERVICE_REPO} into ${env.CHECKOUT_DIR}..."
                     dir(env.CHECKOUT_DIR) {
 						checkout([
                             $class: 'GitSCM',
@@ -41,28 +38,24 @@ pipeline {
                                 url: env.SERVICE_REPO,
                                 credentialsId: env.GIT_CREDENTIALS
                             ]],
-                            doGenerateSubmoduleConfigurations: false,
-                            submoduleCfg: [],
                             extensions: [[$class: 'CleanBeforeCheckout']]
                         ])
                     }
-                }
-            }
-        }
 
-        stage('Load Config') {
-			steps {
-				script {
-					def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
+                    // Read config
+                    def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
                     env.SOLUTION_ID = inputProps.SOLUTION_ID ?: 'unknown'
                     env.APPLICATION = inputProps.APPLICATION ?: env.SERVICE_NAME
-                    env.PIPELINE_PROPS = inputProps.collectEntries { k, v -> [(k): v.toString()] } // for reuse
+                    env.PIPELINE_PROPS = inputProps.collectEntries { k, v -> [(k): v.toString()] }
+
+                    echo "✅ Loaded config for ${env.APPLICATION}"
                 }
             }
         }
 
         stage('Run Service Pipeline') {
-			steps {
+			when { expression { false } } // 👻 Hides from UI
+            steps {
 				script {
 					def fullCheckoutDir = "${pwd()}/${env.CHECKOUT_DIR}"
                     def inputProps = readJSON file: "${env.CHECKOUT_DIR}/input.json"
