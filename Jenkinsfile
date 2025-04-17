@@ -70,17 +70,21 @@ pipeline {
     post {
 		always {
 			script {
-				def subject = currentBuild.currentResult == 'SUCCESS' ? "✅ Build Success" : "❌ Build Failed"
-                def body = """
-                    <p>Build <b>${currentBuild.fullDisplayName}</b> finished with result: <b>${currentBuild.currentResult}</b></p>
-                    <p>Branch: ${params.BRANCH_NAME}</p>
-                    <p><a href="${env.BUILD_URL}">Click here to view the build</a></p>
-                """
-                emailext(
-                    subject: subject,
-                    body: body,
+				try {
+					emailext(
+                    subject: "Build ${currentBuild.currentResult}: ${env.JOB_NAME}",
+                    body: """
+                        <p>Build <b>${currentBuild.fullDisplayName}</b> finished with result: <b>${currentBuild.currentResult}</b></p>
+                        <p>Branch: ${params.BRANCH_NAME}</p>
+                        <p>Version: ${env.VERSION ?: 'N/A'}</p>
+                        <p><a href="${env.BUILD_URL}">View Build</a></p>
+                    """,
+                    mimeType: 'text/html',
                     to: 'rmkaheto@gmail.com'
                 )
+            } catch (e) {
+					echo "⚠️ Failed to send email: ${e.message}"
+            }
             }
         }
     }
