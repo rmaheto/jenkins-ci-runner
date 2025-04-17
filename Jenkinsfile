@@ -66,4 +66,22 @@ pipeline {
             }
         }
     }
+
+    post {
+		always {
+			script {
+				def subject = currentBuild.currentResult == 'SUCCESS' ? "✅ Build Success" : "❌ Build Failed"
+                def body = """
+                    <p>Build <b>${currentBuild.fullDisplayName}</b> finished with result: <b>${currentBuild.currentResult}</b></p>
+                    <p>Branch: ${params.BRANCH_NAME}</p>
+                    <p><a href="${env.BUILD_URL}">Click here to view the build</a></p>
+                """
+                emailext(
+                    subject: subject,
+                    body: body,
+                    to: 'rmkaheto@gmail.com'
+                )
+            }
+        }
+    }
 }
